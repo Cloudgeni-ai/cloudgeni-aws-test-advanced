@@ -16,44 +16,61 @@ resource "aws_s3_bucket_public_access_block" "data_bucket_public_access" {
   restrict_public_buckets = false
 }
 
+
 resource "aws_s3_bucket_policy" "allow_public_access" {
   bucket = aws_s3_bucket.data_bucket.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.data_bucket.arn}/*"
-      },
-      {
-        Sid       = "AWSCloudTrailAclCheck"
-        Effect    = "Allow"
-        Principal = {
-          Service = "cloudtrail.amazonaws.com"
-        }
-        Action    = "s3:GetBucketAcl"
-        Resource  = "${aws_s3_bucket.data_bucket.arn}"
-      },
-      {
-        Sid       = "AWSCloudTrailWrite"
-        Effect    = "Allow"
-        Principal = {
-          Service = "cloudtrail.amazonaws.com"
-        }
-        Action    = "s3:PutObject"
-        Resource  = "${aws_s3_bucket.data_bucket.arn}/AWSLogs/*"
-        Condition = {
-          StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
-          }
+    {
+      Sid       = "PublicReadGetObject"
+      Effect    = "Allow"
+      Principal = "*"
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.data_bucket.arn}/*"
+    },
+    {
+      Sid       = "AWSCloudTrailAclCheck"
+      Effect    = "Allow"
+      Principal = {
+        Service = "cloudtrail.amazonaws.com"
+      }
+      Action    = "s3:GetBucketAcl"
+      Resource  = "${aws_s3_bucket.data_bucket.arn}"
+    },
+    {
+      Sid       = "AWSCloudTrailWrite"
+      Effect    = "Allow"
+      Principal = {
+        Service = "cloudtrail.amazonaws.com"
+      }
+      Action    = "s3:PutObject"
+      Resource  = "${aws_s3_bucket.data_bucket.arn}/AWSLogs/*"
+      Condition = {
+        StringEquals = {
+          "s3:x-amz-acl" = "bucket-owner-full-control"
         }
       }
+    },
+    {
+      Sid = "AllowSSLRequestsOnly",
+      Action = "s3:*",
+      Effect = "Deny",
+      Resource = [
+      "${aws_s3_bucket.data_bucket.arn}",
+      "${aws_s3_bucket.data_bucket.arn}/*"
+      ],
+      Condition = {
+        Bool = {
+          "aws:SecureTransport" = "false"
+        }
+      },
+      Principal = "*"
+    }
     ]
   })
 }
+
 
 resource "aws_s3_bucket_versioning" "data_bucket_versioning" {
   bucket = aws_s3_bucket.data_bucket.id
