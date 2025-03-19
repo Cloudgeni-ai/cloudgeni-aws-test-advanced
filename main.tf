@@ -150,17 +150,26 @@ resource "aws_route_table_association" "public_b" {
 }
 
 # Overly permissive security group (allows all traffic)
+
 resource "aws_security_group" "wide_open" {
   name        = "wide-open-sg"
-  description = "Allow all inbound and outbound traffic"
+  description = "Allow traffic on authorized ports"
   vpc_id      = aws_vpc.main.id
   
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all inbound traffic"
+    description = "Allow HTTP inbound traffic"
+  }
+  
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow HTTPS inbound traffic"
   }
   
   egress {
@@ -172,9 +181,10 @@ resource "aws_security_group" "wide_open" {
   }
   
   tags = {
-    Name = "insecure-sg"
+    Name = "secure-sg"
   }
 }
+
 
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
