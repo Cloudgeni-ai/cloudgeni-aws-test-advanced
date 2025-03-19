@@ -343,3 +343,9 @@ resource "aws_lambda_function" "insecure_lambda" {
   
   # No dead letter queue configuration
 } 
+
+resource "aws_s3_bucket_logging" "data_bucket_logs" {
+  bucket = aws_s3_bucket.data_bucket.id
+  target_bucket = "logging-target-bucket"
+  target_prefix = "log/"
+}
