@@ -55,12 +55,18 @@ resource "aws_s3_bucket_policy" "allow_public_access" {
   })
 }
 
+
+
 resource "aws_s3_bucket_versioning" "data_bucket_versioning" {
   bucket = aws_s3_bucket.data_bucket.id
+  
   versioning_configuration {
-    status = "Disabled"
+    status      = "Enabled"
+    mfa_delete  = "Enabled"
   }
 }
+
+
 
 resource "aws_iam_user" "admin_user" {
   name = var.admin_username
