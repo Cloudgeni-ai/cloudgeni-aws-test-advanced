@@ -150,6 +150,7 @@ resource "aws_route_table_association" "public_b" {
 }
 
 # Overly permissive security group (allows all traffic)
+
 resource "aws_security_group" "wide_open" {
   name        = "wide-open-sg"
   description = "Allow all inbound and outbound traffic"
@@ -161,6 +162,17 @@ resource "aws_security_group" "wide_open" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all inbound traffic"
+  }
+  
+  dynamic "ingress" {
+    for_each = var.high_risk_ports
+    content {
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = []
+      description = "Restrict high-risk port"
+    }
   }
   
   egress {
@@ -175,6 +187,7 @@ resource "aws_security_group" "wide_open" {
     Name = "insecure-sg"
   }
 }
+
 
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
