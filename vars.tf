@@ -45,3 +45,12 @@ variable "ami_id" {
   type        = string
   default     = "ami-0e9089763828757e1"
 } 
+
+variable "high_risk_ports" {
+  type        = list
+  description = "List of high-risk ports to restrict in security group"
+  default     = [
+  20, 21, 22, 23, 25, 110, 135, 143, 445, 1433, 1434, 3000, 3306, 3389,
+  4333, 5000, 5432, 5500, 5601, 8080, 8088, 8888, 9200, 9300
+  ]
+}
