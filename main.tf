@@ -343,3 +343,53 @@ resource "aws_lambda_function" "insecure_lambda" {
   
   # No dead letter queue configuration
 } 
+
+resource "tls_private_key" "root_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+
+resource "tls_self_signed_cert" "root_cert" {
+  private_key_pem = tls_private_key.root_key.private_key_pem
+  subject {
+    common_name  = "Root CA"
+    organization = "Cloudgeni PKI"
+    country      = "IN"
+  }
+  validity_period_hours = 87600 # 10 years
+  is_ca_certificate     = true
+  allowed_uses = [
+  "cert_signing"
+  ]
+}
+
+
+resource "tls_private_key" "intermediate_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+
+resource "tls_cert_request" "intermediate_csr" {
+  private_key_pem = tls_private_key.intermediate_key.private_key_pem
+  subject {
+    common_name  = "Intermediate CA"
+    organization = "Cloudgeni PKI"
+    country      = "IN"
+  }
+}
+
+
+
+resource "tls_locally_signed_cert" "intermediate_cert" {
+  cert_request_pem = tls_cert_request.intermediate_csr.cert_request_pem
+  ca_private_key_pem = tls_private_key.root_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.root_cert.cert_pem
+  validity_period_hours = 43800 # 5 years
+  
+  allowed_uses = [
+  "cert_signing"
+  ]
+}
+
