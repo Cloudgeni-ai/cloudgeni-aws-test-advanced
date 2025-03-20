@@ -176,6 +176,7 @@ resource "aws_security_group" "wide_open" {
   }
 }
 
+
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
@@ -183,18 +184,38 @@ resource "aws_instance" "web_server" {
   vpc_security_group_ids = [aws_security_group.wide_open.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   
-  # No encryption for the root volume
+  user_data = <<-EOF
+  #!/bin/bash
+  yum update -y
+  yum install -y httpd mariadb-server php php-mysqlnd mod_ssl
+  systemctl start httpd
+  systemctl enable httpd
+  
+  # Generate self-signed TLS certificate
+  mkdir -p /etc/httpd/tls
+  openssl req -newkey rsa:2048 -nodes -keyout /etc/httpd/tls/server.key -x509 -days 365 -out /etc/httpd/tls/server.crt -subj "/C=US/ST=State/L=City/O=Organization/OU=Department/CN=localhost"
+  
+  # Configure Apache to use the self-signed certificate
+  echo "<VirtualHost *:443>
+  SSLEngine on
+  SSLCertificateFile /etc/httpd/tls/server.crt
+  SSLCertificateKeyFile /etc/httpd/tls/server.key
+  DocumentRoot /var/www/html
+  </VirtualHost>" > /etc/httpd/conf.d/ssl.conf
+  
+  systemctl restart httpd
+  EOF
+  
   root_block_device {
     volume_size = 8
     encrypted   = false
   }
   
-  # No user data for patching/updates
-  
   tags = {
-    Name = "insecure-web-server"
+    Name = "secure-web-server"
   }
 }
+
 
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-admin-role"
