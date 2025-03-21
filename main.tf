@@ -150,6 +150,7 @@ resource "aws_route_table_association" "public_b" {
 }
 
 # Overly permissive security group (allows all traffic)
+
 resource "aws_security_group" "wide_open" {
   name        = "wide-open-sg"
   description = "Allow all inbound and outbound traffic"
@@ -171,10 +172,11 @@ resource "aws_security_group" "wide_open" {
     description = "Allow all outbound traffic"
   }
   
-  tags = {
-    Name = "insecure-sg"
+  lifecycle {
+    prevent_destroy = true
   }
 }
+
 
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
