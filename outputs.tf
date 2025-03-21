@@ -40,10 +40,7 @@ output "public_subnet_b_id" {
   description = "The ID of the public subnet in AZ b"
 }
 
-output "security_group_id" {
-  value       = aws_security_group.wide_open.id
-  description = "The ID of the insecure security group"
-}
+
 
 output "ec2_instance_id" {
   value       = aws_instance.web_server.id

@@ -45,3 +45,9 @@ variable "ami_id" {
   type        = string
   default     = "ami-0e9089763828757e1"
 } 
+
+variable "vpn_cidr_block" {
+  description = "CIDR block for VPN access. Example: 10.0.0.0/24"
+  type        = string
+  default     = "10.0.0.0/24"
+}
