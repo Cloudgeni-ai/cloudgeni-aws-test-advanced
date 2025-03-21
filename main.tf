@@ -343,3 +343,52 @@ resource "aws_lambda_function" "insecure_lambda" {
   
   # No dead letter queue configuration
 } 
+
+resource "aws_subnet" "private_subnet_a" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = false
+  
+  tags = {
+    Name = "private-subnet-a"
+  }
+}
+
+resource "aws_security_group" "web_server_private_sg" {
+  name        = "web-server-private-sg"
+  description = "Allow inbound HTTP traffic only from VPC CIDR"
+  vpc_id      = aws_vpc.main.id
+  
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+    description = "Allow HTTP traffic from VPC CIDR only"
+  }
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+  
+  tags = {
+    Name = "web-server-private-sg"
+  }
+}
+
+resource "aws_instance" "private_web_server" {
+  ami                         = var.ami_id
+  instance_type              = var.instance_type
+  subnet_id                  = aws_subnet.private_subnet_a.id
+  vpc_security_group_ids     = [aws_security_group.web_server_private_sg.id]
+  associate_public_ip_address = false
+  
+  tags = {
+    Name = "private-web-server"
+  }
+}
