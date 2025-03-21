@@ -96,27 +96,31 @@ resource "aws_vpc" "main" {
   }
 }
 
-resource "aws_subnet" "public_a" {
+
+resource "aws_subnet" "private_a" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidr
+  cidr_block              = var.private_subnet_cidr
   availability_zone       = "${var.aws_region}a"
-  map_public_ip_on_launch = true  # All instances get public IPs automatically
+  map_public_ip_on_launch = false
   
   tags = {
-    Name = "public-subnet-a"
+    Name = "private-subnet-a"
   }
 }
+
+
 
 resource "aws_subnet" "public_b" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidr_b
-  availability_zone       = "${var.aws_region}b" 
+  availability_zone       = "${var.aws_region}b"
   map_public_ip_on_launch = true
   
   tags = {
     Name = "public-subnet-b"
   }
 }
+
 
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
@@ -150,17 +154,18 @@ resource "aws_route_table_association" "public_b" {
 }
 
 # Overly permissive security group (allows all traffic)
-resource "aws_security_group" "wide_open" {
-  name        = "wide-open-sg"
-  description = "Allow all inbound and outbound traffic"
+
+resource "aws_security_group" "private_access" {
+  name        = "private-access-sg"
+  description = "Allow inbound traffic only within VPN and deny public access"
   vpc_id      = aws_vpc.main.id
   
   ingress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all inbound traffic"
+    cidr_blocks = ["10.0.0.0/16"] # Assuming this is the VPN CIDR block
+    description = "Allow inbound traffic within VPN"
   }
   
   egress {
@@ -172,29 +177,29 @@ resource "aws_security_group" "wide_open" {
   }
   
   tags = {
-    Name = "insecure-sg"
+    Name = "private-access-sg"
   }
 }
+
+
 
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
-  subnet_id              = aws_subnet.public_a.id
-  vpc_security_group_ids = [aws_security_group.wide_open.id]
+  subnet_id              = aws_subnet.private_a.id # Change subnet to a private one
+  vpc_security_group_ids = [aws_security_group.private_access.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   
-  # No encryption for the root volume
   root_block_device {
     volume_size = 8
     encrypted   = false
   }
   
-  # No user data for patching/updates
-  
   tags = {
-    Name = "insecure-web-server"
+    Name = "secured-web-server"
   }
 }
+
 
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-admin-role"
@@ -244,21 +249,23 @@ resource "aws_db_subnet_group" "default" {
   }
 }
 
+
 resource "aws_db_instance" "default" {
   allocated_storage      = 10
   engine                 = "mysql"
-  engine_version         = "5.7"  # Older version
+  engine_version         = "5.7"
   instance_class         = "db.t3.micro"
-  db_name                = "insecure_db"
+  db_name                = "secure_db"
   username               = "admin"
-  password               = "password123"  # Hardcoded password (bad practice)
+  password               = "securePassword"
   parameter_group_name   = "default.mysql5.7"
   skip_final_snapshot    = true
-  publicly_accessible    = true  # Publicly accessible (bad practice)
+  publicly_accessible    = false # Restrict public access
   db_subnet_group_name   = aws_db_subnet_group.default.name
-  vpc_security_group_ids = [aws_security_group.wide_open.id]  # Using the wide open security group
-  storage_encrypted      = false  # No encryption at rest
+  vpc_security_group_ids = [aws_security_group.private_access.id] # Link to private_security_group
+  storage_encrypted      = true  # Encryption Enabled
 }
+
 
 # Create an S3 VPC Endpoint but with a policy that allows all actions
 resource "aws_vpc_endpoint" "s3" {
@@ -343,3 +350,14 @@ resource "aws_lambda_function" "insecure_lambda" {
   
   # No dead letter queue configuration
 } 
+
+resource "aws_subnet" "public_a" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = true
+  
+  tags = {
+    Name = "public-subnet-a"
+  }
+}
