@@ -45,3 +45,44 @@ variable "ami_id" {
   type        = string
   default     = "ami-0e9089763828757e1"
 } 
+
+variable "vpn_cidr_block" {
+  description = "VPN CIDR block"
+  type        = string
+}
+
+variable "db_identifier" {
+  type        = string
+  description = "Identifier for the database instance"
+}
+
+variable "db_instance_class" {
+  type        = string
+  description = "Instance class of the database"
+}
+
+variable "db_engine" {
+  type        = string
+  description = "Database engine type"
+}
+
+variable "db_engine_version" {
+  type        = string
+  description = "Engine version of the database"
+}
+
+variable "db_allocated_storage" {
+  type        = number
+  description = "Allocated storage size for the database, in GB"
+}
+
+variable "db_user" {
+  type        = string
+  description = "Username for the database"
+}
+
+variable "db_password" {
+  type        = string
+  sensitive   = true
+  description = "Password for the database user"
+}

@@ -150,17 +150,26 @@ resource "aws_route_table_association" "public_b" {
 }
 
 # Overly permissive security group (allows all traffic)
-resource "aws_security_group" "wide_open" {
-  name        = "wide-open-sg"
-  description = "Allow all inbound and outbound traffic"
+
+resource "aws_security_group" "vpn_access_only" {
+  name        = "vpn-access-only"
+  description = "Allow access only from VPN CIDR and deny all public access"
   vpc_id      = aws_vpc.main.id
   
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all inbound traffic"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.vpn_cidr_block]
+    description = "Allow SSH from VPN only"
+  }
+  
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [var.vpn_cidr_block]
+    description = "Allow HTTP access from VPN only"
   }
   
   egress {
@@ -170,31 +179,28 @@ resource "aws_security_group" "wide_open" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
-  
-  tags = {
-    Name = "insecure-sg"
-  }
 }
+
+
 
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public_a.id
-  vpc_security_group_ids = [aws_security_group.wide_open.id]
+  vpc_security_group_ids = [aws_security_group.vpn_access_only.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   
-  # No encryption for the root volume
+  # Root volume encryption enabled
   root_block_device {
     volume_size = 8
-    encrypted   = false
+    encrypted   = true
   }
-  
-  # No user data for patching/updates
   
   tags = {
-    Name = "insecure-web-server"
+    Name = "secure-web-server"
   }
 }
+
 
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-admin-role"
@@ -244,21 +250,29 @@ resource "aws_db_subnet_group" "default" {
   }
 }
 
+
+
 resource "aws_db_instance" "default" {
-  allocated_storage      = 10
-  engine                 = "mysql"
-  engine_version         = "5.7"  # Older version
-  instance_class         = "db.t3.micro"
-  db_name                = "insecure_db"
-  username               = "admin"
-  password               = "password123"  # Hardcoded password (bad practice)
-  parameter_group_name   = "default.mysql5.7"
-  skip_final_snapshot    = true
-  publicly_accessible    = true  # Publicly accessible (bad practice)
-  db_subnet_group_name   = aws_db_subnet_group.default.name
-  vpc_security_group_ids = [aws_security_group.wide_open.id]  # Using the wide open security group
-  storage_encrypted      = false  # No encryption at rest
+  identifier              = var.db_identifier
+  instance_class          = var.db_instance_class
+  engine                  = var.db_engine
+  engine_version          = var.db_engine_version
+  allocated_storage       = var.db_allocated_storage
+  username                = var.db_user
+  password                = var.db_password
+  publicly_accessible     = false
+  skip_final_snapshot     = true
+  vpc_security_group_ids  = [aws_security_group.vpn_access_only.id]
+  db_subnet_group_name    = aws_db_subnet_group.default.name
+  
+  backup_retention_period = 0  ### Instead of backups_enabled
+  
+  tags = {
+    Name = "default-database"
+  }
 }
+
+
 
 # Create an S3 VPC Endpoint but with a policy that allows all actions
 resource "aws_vpc_endpoint" "s3" {
