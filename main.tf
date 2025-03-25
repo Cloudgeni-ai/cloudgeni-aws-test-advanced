@@ -3,9 +3,16 @@ provider "aws" {
   profile = "cloudgeni-iac"
 }
 
+
 resource "aws_s3_bucket" "data_bucket" {
   bucket = var.bucket_name
+  
+  versioning {
+    enabled = true
+    mfa_delete = true
+  }
 }
+
 
 resource "aws_s3_bucket_public_access_block" "data_bucket_public_access" {
   bucket = aws_s3_bucket.data_bucket.id
