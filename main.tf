@@ -176,25 +176,26 @@ resource "aws_security_group" "wide_open" {
   }
 }
 
+
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public_a.id
-  vpc_security_group_ids = [aws_security_group.wide_open.id]
+  vpc_security_group_ids = [aws_security_group.private_vpn_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   
-  # No encryption for the root volume
   root_block_device {
     volume_size = 8
     encrypted   = false
   }
   
-  # No user data for patching/updates
-  
   tags = {
-    Name = "insecure-web-server"
+    Name = "web-server"
+    Environment = "private-vpn"
+    ScopedAccess = "vpn"
   }
 }
+
 
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-admin-role"
@@ -343,3 +344,30 @@ resource "aws_lambda_function" "insecure_lambda" {
   
   # No dead letter queue configuration
 } 
+
+resource "aws_security_group" "private_vpn_sg" {
+  name        = "private-vpn-sg"
+  description = "Allow traffic from the VPN only"
+  vpc_id      = aws_vpc.main.id
+  
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.1.0/24"]
+    description = "Allow VPN traffic"
+  }
+  
+  egress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+    description = "Allow outbound traffic within the VPC"
+  }
+  
+  tags = {
+    Name = "private-vpn-sg"
+    Environment = "Internal Only"
+  }
+}
