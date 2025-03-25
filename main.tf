@@ -283,6 +283,7 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 # Create an insecure CloudTrail (not encrypted, no log validation)
+
 resource "aws_cloudtrail" "insecure_trail" {
   name                          = "insecure-trail"
   s3_bucket_name                = aws_s3_bucket.data_bucket.id
@@ -290,8 +291,9 @@ resource "aws_cloudtrail" "insecure_trail" {
   is_multi_region_trail         = false
   enable_logging                = true
   enable_log_file_validation    = false # Log file validation disabled (bad practice)
-  kms_key_id                    = null # No encryption (bad practice)
+  kms_key_id                    = aws_kms_key.secure_key.arn # Updated to use a secure KMS key
 }
+
 
 # Create an insecure KMS key with overexposed policy
 resource "aws_kms_key" "insecure_key" {
@@ -343,3 +345,22 @@ resource "aws_lambda_function" "insecure_lambda" {
   
   # No dead letter queue configuration
 } 
+
+resource "aws_kms_key" "secure_key" {
+  description             = "Secure KMS key for CloudTrail"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+    {
+      Sid       = "Enable IAM User Permissions"
+      Effect    = "Allow"
+      Principal = { "AWS": "arn:aws:iam::066730217701:root" } # Specify a strict principal
+      Action    = "kms:*"
+      Resource  = "*"
+    }
+    ]
+  })
+}
