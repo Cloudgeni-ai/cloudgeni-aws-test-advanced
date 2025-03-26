@@ -1,7 +1,12 @@
+
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
   profile = "cloudgeni-iac"
+  
+  # Verify credentials usage for proper authentication
+  shared_credentials_file = "~/.aws/credentials"
 }
+
 
 resource "aws_s3_bucket" "data_bucket" {
   bucket = var.bucket_name
@@ -150,31 +155,56 @@ resource "aws_route_table_association" "public_b" {
 }
 
 # Overly permissive security group (allows all traffic)
+
+
+
+
+
+
+
+
+
+
 resource "aws_security_group" "wide_open" {
   name        = "wide-open-sg"
-  description = "Allow all inbound and outbound traffic"
+  description = "Allow access from VPN only"
   vpc_id      = aws_vpc.main.id
   
   ingress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all inbound traffic"
+    cidr_blocks = aws_vpn_connection.main.cidr()
+    description = "Allow inbound traffic only from VPN"
   }
   
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all outbound traffic"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+    description = "Allow outbound traffic within VPC"
   }
   
   tags = {
-    Name = "insecure-sg"
+    Name = "wide-open-adjusted"
   }
+  
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 resource "aws_instance" "web_server" {
   ami                    = var.ami_id
