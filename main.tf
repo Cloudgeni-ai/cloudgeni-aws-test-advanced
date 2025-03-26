@@ -283,6 +283,7 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 # Create an insecure CloudTrail (not encrypted, no log validation)
+
 resource "aws_cloudtrail" "insecure_trail" {
   name                          = "insecure-trail"
   s3_bucket_name                = aws_s3_bucket.data_bucket.id
@@ -290,8 +291,9 @@ resource "aws_cloudtrail" "insecure_trail" {
   is_multi_region_trail         = false
   enable_logging                = true
   enable_log_file_validation    = false # Log file validation disabled (bad practice)
-  kms_key_id                    = null # No encryption (bad practice)
+  kms_key_id                    = aws_kms_key.insecure_key.arn # Enable SSE-KMS encryption
 }
+
 
 # Create an insecure KMS key with overexposed policy
 resource "aws_kms_key" "insecure_key" {
