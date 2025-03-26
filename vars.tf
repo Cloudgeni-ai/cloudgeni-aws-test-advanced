@@ -45,3 +45,9 @@ variable "ami_id" {
   type        = string
   default     = "ami-0e9089763828757e1"
 } 
+
+variable "private_subnet_cidr_a" {
+  description = "CIDR block for the private subnet in AZ a"
+  type        = string
+  default     = "10.0.4.0/24"
+}
