@@ -343,3 +343,76 @@ resource "aws_lambda_function" "insecure_lambda" {
   
   # No dead letter queue configuration
 } 
+
+resource "aws_subnet" "private_a" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.4.0/24"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = false  # Ensures instances in this subnet do not get public IPs
+  
+  tags = {
+    Name = "private-subnet-a"
+  }
+}
+
+resource "aws_security_group" "private_web_sg" {
+  name        = "private-web-sg"
+  description = "Security group for private web server with restricted access"
+  vpc_id      = aws_vpc.main.id
+  
+  # Allow inbound HTTP from private IP range
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+    description = "Allow HTTP from private subnet"
+  }
+  
+  # Allow inbound HTTPS from private IP range
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+    description = "Allow HTTPS from private subnet"
+  }
+  
+  # Allow inbound SSH from private IP range
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+    description = "Allow SSH from private subnet"
+  }
+  
+  # Allow all outbound traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+  
+  tags = {
+    Name = "private-web-sg"
+  }
+}
+
+resource "aws_instance" "private_web_server" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = aws_subnet.private_a.id
+  vpc_security_group_ids = [aws_security_group.private_web_sg.id]
+  
+  root_block_device {
+    volume_size = 8
+    encrypted   = true
+  }
+  
+  tags = {
+    Name = "private-web-server"
+  }
+}
